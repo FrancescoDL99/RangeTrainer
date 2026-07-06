@@ -230,6 +230,20 @@ function runSimpleRep() {
 
 function onSimpleResult(success) {
   showResultButtons(false);
+  // Salvataggio della ripetizione nello storico
+  const weapons = getWeapons();
+  const weapon = weapons.find(function (w) { return w.id === session.weaponId; });
+  const exercise = getAllExercises().find(function (e) { return e.id === session.exerciseId; });
+  dbSaveSession({
+    date: Date.now(),
+    type: 'simple',
+    weaponId: session.weaponId,
+    weaponName: weapon ? weapon.name : '?',
+    exerciseKey: session.exerciseId,
+    exerciseName: exercise ? exercise.name : '?',
+    parTime: session.parTime,
+    success: success
+  });
   if (success) {
     session.streak++;
     if (session.streak >= session.threshold) {
@@ -435,6 +449,25 @@ function onConfirmSummary() {
   });
 
   saveStage(stored);
+  // Salvataggio del drill nello storico
+  const weapons2 = getWeapons();
+  const weapon2 = weapons2.find(function (w) { return w.id === session.weaponId; });
+  dbSaveSession({
+    date: Date.now(),
+    type: 'stage',
+    weaponId: session.weaponId,
+    weaponName: weapon2 ? weapon2.name : '?',
+    exerciseKey: session.stageId,
+    exerciseName: session.stage.name,
+    phases: session.stage.phases.map(function (p, i) {
+      return {
+        description: p.description,
+        parTime: p.parTime,
+        success: session.phaseResults[i]
+      };
+    }),
+    success: session.phaseResults.every(function (r) { return r === true; })
+  });
 
   const allOk = session.phaseResults.every(function (r) { return r === true; });
   let message = allOk ? 'Drill riuscito!' : 'Drill non completato.';
@@ -560,6 +593,27 @@ function bindSettings() {
     renderExercisesList();
   });
 
+  document.getElementById('btn-export').addEventListener('click', function () {
+    dbExportAll().catch(function (e) {
+      alert('Errore durante l\u2019export: ' + e.message);
+    });
+  });
+
+  document.getElementById('import-file').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm('Importare il backup? Le impostazioni attuali verranno sovrascritte, le sessioni verranno aggiunte allo storico.')) {
+      e.target.value = '';
+      return;
+    }
+    dbImportAll(file).then(function () {
+      alert('Backup importato correttamente.');
+      location.reload();
+    }).catch(function (err) {
+      alert('Errore: ' + err.message);
+    });
+    e.target.value = '';
+  });
   const colorInput = document.getElementById('accent-color-picker');
   colorInput.value = loadData('rt_accent', '#ff6a00');
   colorInput.addEventListener('input', function () {
