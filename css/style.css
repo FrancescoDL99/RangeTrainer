@@ -547,3 +547,53 @@ input[type="range"] {
   color: var(--text-dim);
   text-align: center;
 }
+
+/* ============ SHOT TIMER ============ */
+.st-timer-display {
+  font-size: 4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.st-shots-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 1rem;
+  max-height: 30vh;
+  overflow-y: auto;
+  width: 100%;
+  text-align: center;
+}
+
+.st-cal-status {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  min-height: 1.2em;
+}
+
+.st-level-bar {
+  position: relative;
+  width: 100%;
+  height: 26px;
+  background: var(--surface);
+  border-radius: 13px;
+  overflow: hidden;
+}
+
+.st-level-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--ok);
+}
+
+.st-level-marker {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 3px;
+  height: 100%;
+  background: var(--no);
+}
