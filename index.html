@@ -18,7 +18,11 @@
     <main class="home-menu">
       <button class="btn-menu" data-goto="setup-dryfire">
         <span class="btn-menu-title">Dry-Fire Trainer</span>
-        <span class="btn-menu-sub">Esercizi con par time</span>
+        <span class="btn-menu-sub">Esercizi e drill con par time</span>
+      </button>
+      <button class="btn-menu" data-goto="stage-designer">
+        <span class="btn-menu-title">Stage Designer</span>
+        <span class="btn-menu-sub">Crea un nuovo drill multi-fase</span>
       </button>
       <button class="btn-menu btn-disabled" disabled>
         <span class="btn-menu-title">Shot Timer</span>
@@ -30,7 +34,7 @@
       </button>
       <button class="btn-menu" data-goto="settings">
         <span class="btn-menu-title">Impostazioni</span>
-        <span class="btn-menu-sub">Armi ed esercizi</span>
+        <span class="btn-menu-sub">Armi, esercizi, stage, colore</span>
       </button>
     </main>
   </div>
@@ -49,7 +53,7 @@
       </label>
 
       <label class="field">
-        <span class="field-label">Esercizio</span>
+        <span class="field-label">Esercizio o stage</span>
         <select id="setup-exercise"></select>
       </label>
 
@@ -87,6 +91,10 @@
       <div id="session-partime" class="session-partime"></div>
       <div id="session-streak" class="session-streak"></div>
 
+      <div id="session-canvas-wrap" class="session-canvas-wrap hidden">
+        <canvas id="session-canvas" width="700" height="500"></canvas>
+      </div>
+
       <div id="session-controls">
         <button id="btn-run" class="btn-big">VIA</button>
       </div>
@@ -100,6 +108,18 @@
       </div>
 
       <button id="btn-end-session" class="btn-secondary">Termina sessione</button>
+    </main>
+  </div>
+
+  <!-- ============ SCHERMATA RIEPILOGO DRILL ============ -->
+  <div id="screen-drill-summary" class="screen">
+    <header class="app-header">
+      <h2>Riepilogo drill</h2>
+    </header>
+    <main class="form-page">
+      <p class="summary-hint">Segna ogni fase: sei rientrato nel par time?</p>
+      <ol id="summary-phases-list" class="phases-list"></ol>
+      <button id="btn-confirm-summary" class="btn-primary" disabled>Conferma e salva</button>
     </main>
   </div>
 
@@ -129,11 +149,22 @@
         </div>
       </section>
 
+      <section class="settings-section">
+        <h3>Stage salvati</h3>
+        <ul id="stages-list" class="items-list"></ul>
+      </section>
+
+      <section class="settings-section">
+        <h3>Colore principale</h3>
+        <input type="color" id="accent-color-picker" value="#ff6a00">
+      </section>
+
     </main>
   </div>
 
   <script src="js/exercises.js"></script>
   <script src="js/timer.js"></script>
+  <script src="js/stage-designer.js"></script>
   <script src="js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
