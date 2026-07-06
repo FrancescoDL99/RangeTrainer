@@ -1,5 +1,5 @@
 // Incrementa questo numero ogni volta che modifichi i file per forzare l'aggiornamento cache
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `rangetrainer-${CACHE_VERSION}`;
 
 // Elenco dei file da salvare in cache per l'uso offline
@@ -10,7 +10,8 @@ const FILES_TO_CACHE = [
   './css/style.css',
   './js/app.js',
   './js/timer.js',
-  './js/exercises.js'
+  './js/exercises.js',
+  './js/stage-designer.js'
 ];
 
 // Installazione: salva tutti i file in cache
