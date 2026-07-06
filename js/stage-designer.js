@@ -96,6 +96,10 @@ function buildStageDesignerScreen() {
     '      <span class="field-label">Dimensione (distanza simulata)</span>',
     '      <input type="range" id="sd-obj-scale" min="30" max="200" value="100">',
     '    </label>',
+    '    <label class="field">',
+    '      <span class="field-label">Rotazione</span>',
+    '      <input type="range" id="sd-obj-rotation" min="0" max="359" value="0">',
+    '    </label>',
     '    <label class="field" id="sd-shots-field">',
     '      <span class="field-label">Colpi richiesti</span>',
     '      <input type="number" id="sd-obj-shots" min="1" max="20" value="2" inputmode="numeric">',
@@ -151,6 +155,10 @@ function initStageDesigner() {
     const obj = getSelectedObject();
     if (obj) { obj.scale = parseInt(e.target.value, 10) / 100; drawStage(); }
   });
+  document.getElementById('sd-obj-rotation').addEventListener('input', function (e) {
+    const obj = getSelectedObject();
+    if (obj) { obj.rotation = parseInt(e.target.value, 10); drawStage(); }
+  });
   document.getElementById('sd-obj-shots').addEventListener('input', function (e) {
     const obj = getSelectedObject();
     if (obj) { obj.shots = parseInt(e.target.value, 10) || 1; drawStage(); }
@@ -190,6 +198,7 @@ function addStageObject(type) {
     type: type,
     x: 350, y: 250,
     scale: 1,
+    rotation: 0,
     shots: typeDef.canShoot ? 2 : 0,
     appearAt: null
   };
@@ -215,6 +224,7 @@ function selectObject(id) {
   document.getElementById('sd-obj-name').textContent =
     typeDef.name + ' #' + obj.id;
   document.getElementById('sd-obj-scale').value = Math.round(obj.scale * 100);
+  document.getElementById('sd-obj-rotation').value = obj.rotation || 0;
   document.getElementById('sd-obj-shots').value = obj.shots;
   document.getElementById('sd-shots-field').style.display = typeDef.canShoot ? '' : 'none';
   document.getElementById('sd-obj-appear').value = obj.appearAt === null ? '' : obj.appearAt;
@@ -288,6 +298,7 @@ function drawStage(visibleFilter) {
     if (visibleFilter && !visibleFilter(o)) return;
     ctx.save();
     ctx.translate(o.x, o.y);
+    ctx.rotate((o.rotation || 0) * Math.PI / 180);
     ctx.scale(o.scale, o.scale);
     drawObjectShape(ctx, o);
     ctx.restore();
