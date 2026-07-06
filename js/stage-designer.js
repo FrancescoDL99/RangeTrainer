@@ -3,8 +3,6 @@
 // ============================================================
 
 // ---------- Lettura del colore principale dal CSS ----------
-// Il canvas non puo' usare direttamente le variabili CSS,
-// quindi leggiamo il valore corrente di --accent quando serve.
 
 function getAccentColor() {
   return getComputedStyle(document.documentElement)
@@ -20,6 +18,7 @@ const STAGE_OBJECT_TYPES = [
   { type: 'popper',    name: 'Popper',        canShoot: true  },
   { type: 'noshoot',   name: 'No-shoot',      canShoot: false },
   { type: 'barricade', name: 'Barricata',     canShoot: false },
+  { type: 'wall',      name: 'Muro',          canShoot: false },
   { type: 'start',     name: 'Partenza',      canShoot: false },
   { type: 'move',      name: 'Movimento',     canShoot: false }
 ];
@@ -27,19 +26,27 @@ const STAGE_OBJECT_TYPES = [
 // ---------- Stato dell'editor ----------
 
 const stageEditor = {
-  objects: [],        // oggetti sul canvas
-  phases: [],         // fasi della sequenza
-  selectedId: null,   // oggetto attualmente selezionato
+  objects: [],
+  phases: [],
+  selectedId: null,
   stageName: '',
   canvas: null,
   ctx: null,
   dragging: false,
+  rotating: false,
   dragOffsetX: 0,
   dragOffsetY: 0,
-  nextObjectId: 1
+  nextObjectId: 1,
+  // Vista (zoom e pan)
+  view: { scale: 1, ox: 0, oy: 0 },
+  pointers: {},          // tocchi attivi (per pinch)
+  pinchStart: null,
+  // Selezione bersagli per una fase
+  pickingForPhase: null,
+  lastTapTime: 0
 };
 
-// ---------- Salvataggio layout (localStorage, chiave rt_stages) ----------
+// ---------- Salvataggio layout ----------
 
 function getSavedStages() {
   return loadData('rt_stages', []);
@@ -48,11 +55,8 @@ function getSavedStages() {
 function saveStage(stage) {
   const stages = getSavedStages();
   const existing = stages.findIndex(function (s) { return s.id === stage.id; });
-  if (existing >= 0) {
-    stages[existing] = stage;
-  } else {
-    stages.push(stage);
-  }
+  if (existing >= 0) stages[existing] = stage;
+  else stages.push(stage);
   saveData('rt_stages', stages);
 }
 
@@ -62,7 +66,7 @@ function deleteStage(stageId) {
 }
 
 // ============================================================
-// COSTRUZIONE DELLA SCHERMATA (creata dinamicamente)
+// COSTRUZIONE DELLA SCHERMATA
 // ============================================================
 
 function buildStageDesignerScreen() {
@@ -85,11 +89,18 @@ function buildStageDesignerScreen() {
 
     '  <div class="sd-palette" id="sd-palette"></div>',
 
+    '  <div id="sd-picking-banner" class="sd-picking-banner hidden">',
+    '    Tocca i bersagli della fase <span id="sd-picking-num"></span>, poi',
+    '    <button id="sd-picking-done" class="btn-small">Fine</button>',
+    '  </div>',
+
     '  <canvas id="sd-canvas" width="700" height="500"></canvas>',
+    '  <div class="sd-canvas-hint">Due dita: zoom e sposta - doppio tocco: vista normale</div>',
 
     '  <div id="sd-object-panel" class="sd-object-panel hidden">',
     '    <div class="sd-panel-row">',
     '      <span id="sd-obj-name" class="sd-obj-name"></span>',
+    '      <span id="sd-obj-dist" class="sd-obj-dist"></span>',
     '      <button id="sd-obj-delete" class="btn-small btn-delete-obj">Elimina oggetto</button>',
     '    </div>',
     '    <label class="field">',
@@ -99,6 +110,10 @@ function buildStageDesignerScreen() {
     '    <label class="field">',
     '      <span class="field-label">Rotazione</span>',
     '      <input type="range" id="sd-obj-rotation" min="0" max="359" value="0">',
+    '    </label>',
+    '    <label class="field hidden" id="sd-length-field">',
+    '      <span class="field-label">Lunghezza muro</span>',
+    '      <input type="range" id="sd-obj-length" min="60" max="400" value="160">',
     '    </label>',
     '    <label class="field" id="sd-shots-field">',
     '      <span class="field-label">Colpi richiesti</span>',
@@ -121,7 +136,6 @@ function buildStageDesignerScreen() {
   ].join('');
 
   document.body.appendChild(div);
-
   initStageDesigner();
 }
 
@@ -133,7 +147,6 @@ function initStageDesigner() {
   stageEditor.canvas = document.getElementById('sd-canvas');
   stageEditor.ctx = stageEditor.canvas.getContext('2d');
 
-  // Palette: un pulsante per ogni tipo di oggetto
   const palette = document.getElementById('sd-palette');
   STAGE_OBJECT_TYPES.forEach(function (t) {
     const btn = document.createElement('button');
@@ -143,21 +156,23 @@ function initStageDesigner() {
     palette.appendChild(btn);
   });
 
-  // Interazione canvas (touch e mouse)
   const c = stageEditor.canvas;
   c.addEventListener('pointerdown', onCanvasDown);
   c.addEventListener('pointermove', onCanvasMove);
   c.addEventListener('pointerup', onCanvasUp);
   c.addEventListener('pointercancel', onCanvasUp);
 
-  // Pannello proprieta' oggetto
   document.getElementById('sd-obj-scale').addEventListener('input', function (e) {
     const obj = getSelectedObject();
-    if (obj) { obj.scale = parseInt(e.target.value, 10) / 100; drawStage(); }
+    if (obj) { obj.scale = parseInt(e.target.value, 10) / 100; updateDistLabel(obj); drawStage(); }
   });
   document.getElementById('sd-obj-rotation').addEventListener('input', function (e) {
     const obj = getSelectedObject();
     if (obj) { obj.rotation = parseInt(e.target.value, 10); drawStage(); }
+  });
+  document.getElementById('sd-obj-length').addEventListener('input', function (e) {
+    const obj = getSelectedObject();
+    if (obj) { obj.length = parseInt(e.target.value, 10); drawStage(); }
   });
   document.getElementById('sd-obj-shots').addEventListener('input', function (e) {
     const obj = getSelectedObject();
@@ -171,18 +186,25 @@ function initStageDesigner() {
     }
   });
   document.getElementById('sd-obj-delete').addEventListener('click', function () {
+    // Rimuove l'oggetto anche dai collegamenti delle fasi
+    stageEditor.phases.forEach(function (p) {
+      if (p.targetIds) {
+        p.targetIds = p.targetIds.filter(function (id) {
+          return id !== stageEditor.selectedId;
+        });
+      }
+    });
     stageEditor.objects = stageEditor.objects.filter(function (o) {
       return o.id !== stageEditor.selectedId;
     });
     selectObject(null);
+    renderPhases();
     drawStage();
   });
 
-  // Fasi
   document.getElementById('sd-add-phase').addEventListener('click', addPhase);
-
-  // Salvataggio
   document.getElementById('sd-save-stage').addEventListener('click', onSaveStage);
+  document.getElementById('sd-picking-done').addEventListener('click', endTargetPicking);
 
   drawStage();
 }
@@ -199,6 +221,7 @@ function addStageObject(type) {
     x: 350, y: 250,
     scale: 1,
     rotation: 0,
+    length: type === 'wall' ? 160 : 0,
     shots: typeDef.canShoot ? 2 : 0,
     appearAt: null
   };
@@ -211,6 +234,17 @@ function getSelectedObject() {
   return stageEditor.objects.find(function (o) { return o.id === stageEditor.selectedId; }) || null;
 }
 
+// Distanza simulata: scala 1 = ~10 m (convenzione), inversamente proporzionale
+function simulatedDistance(obj) {
+  return Math.round(10 / obj.scale);
+}
+
+function updateDistLabel(obj) {
+  const el = document.getElementById('sd-obj-dist');
+  const typeDef = STAGE_OBJECT_TYPES.find(function (t) { return t.type === obj.type; });
+  el.textContent = typeDef.canShoot ? '~' + simulatedDistance(obj) + ' m' : '';
+}
+
 function selectObject(id) {
   stageEditor.selectedId = id;
   const panel = document.getElementById('sd-object-panel');
@@ -221,31 +255,105 @@ function selectObject(id) {
   }
   panel.classList.remove('hidden');
   const typeDef = STAGE_OBJECT_TYPES.find(function (t) { return t.type === obj.type; });
-  document.getElementById('sd-obj-name').textContent =
-    typeDef.name + ' #' + obj.id;
+  document.getElementById('sd-obj-name').textContent = typeDef.name + ' #' + obj.id;
   document.getElementById('sd-obj-scale').value = Math.round(obj.scale * 100);
   document.getElementById('sd-obj-rotation').value = obj.rotation || 0;
+  document.getElementById('sd-obj-length').value = obj.length || 160;
   document.getElementById('sd-obj-shots').value = obj.shots;
   document.getElementById('sd-shots-field').style.display = typeDef.canShoot ? '' : 'none';
+  document.getElementById('sd-length-field').classList.toggle('hidden', obj.type !== 'wall');
   document.getElementById('sd-obj-appear').value = obj.appearAt === null ? '' : obj.appearAt;
+  updateDistLabel(obj);
 }
 
-// ---------- Coordinate del tocco rispetto al canvas ----------
+// ---------- Coordinate: dal tocco al "mondo" (tenendo conto di zoom/pan) ----------
 
 function canvasCoords(e) {
   const rect = stageEditor.canvas.getBoundingClientRect();
   const scaleX = stageEditor.canvas.width / rect.width;
   const scaleY = stageEditor.canvas.height / rect.height;
-  return {
-    x: (e.clientX - rect.left) * scaleX,
-    y: (e.clientY - rect.top) * scaleY
-  };
+  const px = (e.clientX - rect.left) * scaleX;
+  const py = (e.clientY - rect.top) * scaleY;
+  const v = stageEditor.view;
+  return { x: (px - v.ox) / v.scale, y: (py - v.oy) / v.scale };
 }
+
+function objectRadius(o) {
+  if (o.type === 'wall') return Math.max(30, (o.length || 160) / 2);
+  return 45 * o.scale;
+}
+
+// Posizione della maniglia di rotazione (sopra l'oggetto, segue la rotazione)
+function rotationHandlePos(o) {
+  const r = objectRadius(o) + 28;
+  const a = ((o.rotation || 0) - 90) * Math.PI / 180;
+  return { x: o.x + r * Math.cos(a), y: o.y + r * Math.sin(a) };
+}
+
+// ---------- Interazione ----------
 
 function onCanvasDown(e) {
   e.preventDefault();
+  stageEditor.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+  const ids = Object.keys(stageEditor.pointers);
+
+  // Due dita: inizia pinch/pan
+  if (ids.length === 2) {
+    stageEditor.dragging = false;
+    stageEditor.rotating = false;
+    const p1 = stageEditor.pointers[ids[0]];
+    const p2 = stageEditor.pointers[ids[1]];
+    stageEditor.pinchStart = {
+      dist: Math.hypot(p2.x - p1.x, p2.y - p1.y),
+      cx: (p1.x + p2.x) / 2,
+      cy: (p1.y + p2.y) / 2,
+      view: { scale: stageEditor.view.scale, ox: stageEditor.view.ox, oy: stageEditor.view.oy }
+    };
+    return;
+  }
+
+  // Doppio tocco: reset vista
+  const now = Date.now();
+  if (now - stageEditor.lastTapTime < 300) {
+    stageEditor.view = { scale: 1, ox: 0, oy: 0 };
+    stageEditor.lastTapTime = 0;
+    drawStage();
+    return;
+  }
+  stageEditor.lastTapTime = now;
+
   const p = canvasCoords(e);
-  // Cerca l'oggetto toccato, dal piu' recente al piu' vecchio
+
+  // Modalita' selezione bersagli per una fase
+  if (stageEditor.pickingForPhase !== null) {
+    for (let i = stageEditor.objects.length - 1; i >= 0; i--) {
+      const o = stageEditor.objects[i];
+      const typeDef = STAGE_OBJECT_TYPES.find(function (t) { return t.type === o.type; });
+      if (!typeDef.canShoot) continue;
+      if (Math.abs(p.x - o.x) < objectRadius(o) && Math.abs(p.y - o.y) < objectRadius(o)) {
+        const phase = stageEditor.phases[stageEditor.pickingForPhase];
+        if (!phase.targetIds) phase.targetIds = [];
+        const idx = phase.targetIds.indexOf(o.id);
+        if (idx >= 0) phase.targetIds.splice(idx, 1);
+        else phase.targetIds.push(o.id);
+        drawStage();
+        return;
+      }
+    }
+    return;
+  }
+
+  // Maniglia di rotazione dell'oggetto selezionato?
+  const sel = getSelectedObject();
+  if (sel) {
+    const h = rotationHandlePos(sel);
+    if (Math.hypot(p.x - h.x, p.y - h.y) < 20) {
+      stageEditor.rotating = true;
+      return;
+    }
+  }
+
+  // Oggetto toccato?
   for (let i = stageEditor.objects.length - 1; i >= 0; i--) {
     const o = stageEditor.objects[i];
     const r = objectRadius(o);
@@ -263,39 +371,89 @@ function onCanvasDown(e) {
 }
 
 function onCanvasMove(e) {
+  if (stageEditor.pointers[e.pointerId]) {
+    stageEditor.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+  }
+  const ids = Object.keys(stageEditor.pointers);
+
+  // Pinch/pan con due dita
+  if (ids.length === 2 && stageEditor.pinchStart) {
+    e.preventDefault();
+    const p1 = stageEditor.pointers[ids[0]];
+    const p2 = stageEditor.pointers[ids[1]];
+    const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const cx = (p1.x + p2.x) / 2;
+    const cy = (p1.y + p2.y) / 2;
+    const st = stageEditor.pinchStart;
+    let newScale = st.view.scale * (dist / st.dist);
+    newScale = Math.max(0.5, Math.min(4, newScale));
+    // Lo zoom resta centrato sul punto medio delle dita
+    const rect = stageEditor.canvas.getBoundingClientRect();
+    const k = stageEditor.canvas.width / rect.width;
+    const mx = (st.cx - rect.left) * k;
+    const my = (st.cy - rect.top) * k;
+    stageEditor.view.scale = newScale;
+    stageEditor.view.ox = mx - (mx - st.view.ox) * (newScale / st.view.scale) + (cx - st.cx) * k;
+    stageEditor.view.oy = my - (my - st.view.oy) * (newScale / st.view.scale) + (cy - st.cy) * k;
+    drawStage();
+    return;
+  }
+
+  const p = canvasCoords(e);
+
+  if (stageEditor.rotating) {
+    e.preventDefault();
+    const obj = getSelectedObject();
+    if (!obj) return;
+    const ang = Math.atan2(p.y - obj.y, p.x - obj.x) * 180 / Math.PI + 90;
+    obj.rotation = Math.round((ang + 360) % 360);
+    document.getElementById('sd-obj-rotation').value = obj.rotation;
+    drawStage();
+    return;
+  }
+
   if (!stageEditor.dragging) return;
   e.preventDefault();
   const obj = getSelectedObject();
   if (!obj) return;
-  const p = canvasCoords(e);
   obj.x = p.x - stageEditor.dragOffsetX;
   obj.y = p.y - stageEditor.dragOffsetY;
   drawStage();
 }
 
-function onCanvasUp() {
+function onCanvasUp(e) {
+  delete stageEditor.pointers[e.pointerId];
+  if (Object.keys(stageEditor.pointers).length < 2) {
+    stageEditor.pinchStart = null;
+  }
   stageEditor.dragging = false;
-}
-
-function objectRadius(o) {
-  return 45 * o.scale;
+  stageEditor.rotating = false;
 }
 
 // ============================================================
-// DISEGNO DEGLI OGGETTI SUL CANVAS
+// DISEGNO
 // ============================================================
 
-function drawStage(visibleFilter) {
+function drawStage(visibleFilter, highlightIds) {
   const ctx = stageEditor.ctx;
   const c = stageEditor.canvas;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, c.width, c.height);
 
-  // Sfondo
-  ctx.fillStyle = '#20241f';
-  ctx.fillRect(0, 0, c.width, c.height);
+  // Applica zoom/pan
+  const v = stageEditor.view;
+  ctx.setTransform(v.scale, 0, 0, v.scale, v.ox, v.oy);
+
+  drawFloor(ctx, c.width, c.height);
+
+  const accent = getAccentColor();
+  const picking = stageEditor.pickingForPhase !== null;
+  const pickedIds = picking && stageEditor.phases[stageEditor.pickingForPhase].targetIds ?
+    stageEditor.phases[stageEditor.pickingForPhase].targetIds : [];
 
   stageEditor.objects.forEach(function (o) {
     if (visibleFilter && !visibleFilter(o)) return;
+
     ctx.save();
     ctx.translate(o.x, o.y);
     ctx.rotate((o.rotation || 0) * Math.PI / 180);
@@ -303,32 +461,92 @@ function drawStage(visibleFilter) {
     drawObjectShape(ctx, o);
     ctx.restore();
 
-    // Bordo di selezione
-    if (o.id === stageEditor.selectedId) {
-      const r = objectRadius(o);
-      ctx.strokeStyle = getAccentColor();
+    const r = objectRadius(o);
+
+    // Evidenziazione: bersaglio della fase in esecuzione, o selezionato in picking
+    const isHighlighted = (highlightIds && highlightIds.indexOf(o.id) >= 0) ||
+      (picking && pickedIds.indexOf(o.id) >= 0);
+    if (isHighlighted) {
+      ctx.strokeStyle = '#ffd400';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, r + 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Bordo di selezione (solo in editing normale)
+    if (!picking && !highlightIds && o.id === stageEditor.selectedId) {
+      ctx.strokeStyle = accent;
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
       ctx.strokeRect(o.x - r, o.y - r, r * 2, r * 2);
       ctx.setLineDash([]);
+      // Maniglia di rotazione
+      const h = rotationHandlePos(o);
+      ctx.beginPath();
+      ctx.moveTo(o.x, o.y);
+      ctx.lineTo(h.x, h.y);
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, 10, 0, Math.PI * 2);
+      ctx.fillStyle = accent;
+      ctx.fill();
     }
 
-    // Numero colpi richiesti
+    // Colpi richiesti
     if (o.shots > 0) {
-      ctx.fillStyle = getAccentColor();
+      ctx.fillStyle = accent;
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(o.shots + ' c.', o.x, o.y + objectRadius(o) + 16);
+      ctx.fillText(o.shots + ' c.', o.x, o.y + r + 16);
     }
 
-    // Indicatore evento temporizzato
-    if (o.appearAt !== null) {
+    // Evento temporizzato
+    if (o.appearAt !== null && o.appearAt !== undefined) {
       ctx.fillStyle = '#4aa3ff';
       ctx.font = '12px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('t=' + o.appearAt + 's', o.x, o.y - objectRadius(o) - 6);
+      ctx.fillText('t=' + o.appearAt + 's', o.x, o.y - r - 6);
     }
   });
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+// Pavimento con griglia prospettica
+function drawFloor(ctx, W, H) {
+  // Cielo/fondo
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#2a2f28');
+  grad.addColorStop(0.25, '#242822');
+  grad.addColorStop(1, '#1c211b');
+  ctx.fillStyle = grad;
+  ctx.fillRect(-W, -H, W * 3, H * 3);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 1;
+
+  // Linee orizzontali: piu' fitte verso il fondo (prospettiva)
+  const horizon = 40;
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10;
+    const y = horizon + (H - horizon) * t * t;
+    ctx.beginPath();
+    ctx.moveTo(-W, y);
+    ctx.lineTo(W * 2, y);
+    ctx.stroke();
+  }
+
+  // Linee convergenti verso il punto di fuga centrale
+  const vpx = W / 2;
+  for (let i = -6; i <= 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(vpx, horizon);
+    ctx.lineTo(vpx + i * W / 5, H + 50);
+    ctx.stroke();
+  }
 }
 
 function drawObjectShape(ctx, o) {
@@ -336,72 +554,118 @@ function drawObjectShape(ctx, o) {
   switch (o.type) {
 
     case 'ipsc':
-      // Sagoma IPSC: cartone marrone con zone A/C/D
-      ctx.fillStyle = '#b58a5a';
+      // Sagoma IPSC "metric": proporzioni realistiche, zone A/C/D
+      ctx.fillStyle = '#c8a06a';
       ctx.beginPath();
-      ctx.moveTo(-30, 40); ctx.lineTo(-30, -10); ctx.lineTo(-18, -28);
-      ctx.lineTo(-10, -40); ctx.lineTo(10, -40); ctx.lineTo(18, -28);
-      ctx.lineTo(30, -10); ctx.lineTo(30, 40); ctx.closePath();
+      ctx.moveTo(-29, 42); ctx.lineTo(-29, -8);
+      ctx.lineTo(-15, -30); ctx.lineTo(-11, -44);
+      ctx.lineTo(11, -44); ctx.lineTo(15, -30);
+      ctx.lineTo(29, -8); ctx.lineTo(29, 42);
+      ctx.closePath();
       ctx.fill();
-      // Zona A (centro + testa)
-      ctx.strokeStyle = '#6d4c2a'; ctx.lineWidth = 1.5;
-      ctx.strokeRect(-9, -12, 18, 30);
-      ctx.strokeRect(-5, -38, 10, 12);
+      ctx.strokeStyle = '#8a6a40';
+      ctx.lineWidth = 1.2;
+      // Zona D (perimetro interno)
+      ctx.strokeRect(-25, -18, 50, 56);
       // Zona C
-      ctx.strokeRect(-20, -22, 40, 50);
-      ctx.fillStyle = '#6d4c2a';
-      ctx.font = '8px sans-serif';
+      ctx.strokeRect(-17, -14, 34, 46);
+      // Zona A corpo
+      ctx.strokeRect(-7.5, -10, 15, 28);
+      // Testa: zona A + contorno
+      ctx.strokeRect(-9, -42, 18, 14);
+      ctx.strokeRect(-4.5, -39, 9, 8);
+      ctx.fillStyle = '#8a6a40';
+      ctx.font = 'bold 7px sans-serif';
       ctx.fillText('A', 0, 6);
       break;
 
     case 'idpa':
-      // Sagoma IDPA: cartone con cerchio centrale
       ctx.fillStyle = '#c9b183';
       ctx.beginPath();
-      ctx.moveTo(-28, 40); ctx.lineTo(-28, -15);
-      ctx.quadraticCurveTo(-28, -40, 0, -40);
-      ctx.quadraticCurveTo(28, -40, 28, -15);
-      ctx.lineTo(28, 40); ctx.closePath();
+      ctx.moveTo(-28, 42); ctx.lineTo(-28, -14);
+      ctx.quadraticCurveTo(-28, -44, 0, -44);
+      ctx.quadraticCurveTo(28, -44, 28, -14);
+      ctx.lineTo(28, 42); ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#7a6a4a'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, -28, 7, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#7a6a4a'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(0, 2, 13, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -30, 7, 0, Math.PI * 2); ctx.stroke();
       break;
 
-    case 'plate':
-      ctx.fillStyle = '#c0c8d0';
-      ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#7d8790'; ctx.lineWidth = 2; ctx.stroke();
+    case 'plate': {
+      // Piattello con effetto metallo
+      const pg = ctx.createRadialGradient(-6, -6, 3, 0, 0, 20);
+      pg.addColorStop(0, '#f0f4f8');
+      pg.addColorStop(0.6, '#b8c2cc');
+      pg.addColorStop(1, '#7d8790');
+      ctx.fillStyle = pg;
+      ctx.beginPath(); ctx.arc(0, 0, 19, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#5d6770'; ctx.lineWidth = 2; ctx.stroke();
       break;
+    }
 
-    case 'popper':
-      ctx.fillStyle = '#c0c8d0';
-      ctx.beginPath(); ctx.arc(0, -22, 12, 0, Math.PI * 2); ctx.fill();
-      ctx.fillRect(-7, -14, 14, 34);
-      ctx.fillRect(-16, 20, 32, 8);
+    case 'popper': {
+      // Popper classico a "chiodo": testa tonda, collo stretto, base larga
+      const mg = ctx.createLinearGradient(-14, 0, 14, 0);
+      mg.addColorStop(0, '#8d97a0');
+      mg.addColorStop(0.5, '#d8e0e8');
+      mg.addColorStop(1, '#8d97a0');
+      ctx.fillStyle = mg;
+      ctx.beginPath(); ctx.arc(0, -26, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-5, -16); ctx.lineTo(-14, 24);
+      ctx.lineTo(14, 24); ctx.lineTo(5, -16);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#6d7780';
+      ctx.fillRect(-19, 24, 38, 7);
       break;
+    }
 
     case 'noshoot':
       ctx.fillStyle = '#e8e8e8';
       ctx.beginPath();
-      ctx.moveTo(-28, 40); ctx.lineTo(-28, -15);
-      ctx.quadraticCurveTo(-28, -40, 0, -40);
-      ctx.quadraticCurveTo(28, -40, 28, -15);
-      ctx.lineTo(28, 40); ctx.closePath();
+      ctx.moveTo(-28, 42); ctx.lineTo(-28, -14);
+      ctx.quadraticCurveTo(-28, -44, 0, -44);
+      ctx.quadraticCurveTo(28, -44, 28, -14);
+      ctx.lineTo(28, 42); ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 3;
+      ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(-20, -30); ctx.lineTo(20, 30);
-      ctx.moveTo(20, -30); ctx.lineTo(-20, 30);
+      ctx.moveTo(-20, -32); ctx.lineTo(20, 32);
+      ctx.moveTo(20, -32); ctx.lineTo(-20, 32);
       ctx.stroke();
       break;
 
-    case 'barricade':
-      ctx.fillStyle = '#5a5a5a';
-      ctx.fillRect(-35, -12, 70, 24);
-      ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 2;
-      ctx.strokeRect(-35, -12, 70, 24);
+    case 'barricade': {
+      const bg = ctx.createLinearGradient(0, -14, 0, 14);
+      bg.addColorStop(0, '#6a6a6a');
+      bg.addColorStop(1, '#4a4a4a');
+      ctx.fillStyle = bg;
+      ctx.fillRect(-35, -14, 70, 28);
+      ctx.strokeStyle = '#333333'; ctx.lineWidth = 2;
+      ctx.strokeRect(-35, -14, 70, 28);
+      // Doghe verticali
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 1;
+      for (let i = -25; i <= 25; i += 10) {
+        ctx.beginPath(); ctx.moveTo(i, -14); ctx.lineTo(i, 14); ctx.stroke();
+      }
       break;
+    }
+
+    case 'wall': {
+      // Il muro NON viene scalato dalla dimensione: usa la lunghezza propria
+      const half = (o.length || 160) / 2 / o.scale;
+      const wg = ctx.createLinearGradient(0, -8, 0, 8);
+      wg.addColorStop(0, '#7a7268');
+      wg.addColorStop(1, '#57504a');
+      ctx.fillStyle = wg;
+      ctx.fillRect(-half, -8 / o.scale, half * 2, 16 / o.scale);
+      ctx.strokeStyle = '#3a352f';
+      ctx.lineWidth = 2 / o.scale;
+      ctx.strokeRect(-half, -8 / o.scale, half * 2, 16 / o.scale);
+      break;
+    }
 
     case 'start':
       ctx.strokeStyle = '#2ecc71'; ctx.lineWidth = 3;
@@ -413,6 +677,7 @@ function drawObjectShape(ctx, o) {
 
     case 'move':
       ctx.strokeStyle = '#4aa3ff'; ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(-25, 0); ctx.lineTo(15, 0);
       ctx.moveTo(15, 0); ctx.lineTo(5, -8);
@@ -430,7 +695,8 @@ function addPhase() {
   stageEditor.phases.push({
     description: '',
     parTime: 2.0,
-    toneId: 'B'
+    toneId: 'B',
+    targetIds: []
   });
   renderPhases();
 }
@@ -443,14 +709,12 @@ function renderPhases() {
     const li = document.createElement('li');
     li.className = 'phase-item';
 
-    // Descrizione
     const desc = document.createElement('input');
     desc.type = 'text';
     desc.placeholder = 'Es. 2 colpi sagoma A - ricarica';
     desc.value = phase.description;
     desc.addEventListener('input', function () { phase.description = desc.value; });
 
-    // Riga: par time + tonalita' + prova + elimina
     const row = document.createElement('div');
     row.className = 'field-row';
 
@@ -476,7 +740,6 @@ function renderPhases() {
 
     const test = document.createElement('button');
     test.className = 'btn-small';
-    test.textContent = '&#9835;'; // nota musicale
     test.innerHTML = '&#9835;';
     test.addEventListener('click', function () { playBeepNow(phase.toneId); });
 
@@ -493,10 +756,41 @@ function renderPhases() {
     row.appendChild(test);
     row.appendChild(del);
 
+    // Riga bersagli collegati
+    const targetRow = document.createElement('div');
+    targetRow.className = 'field-row';
+    const targetBtn = document.createElement('button');
+    targetBtn.className = 'btn-small';
+    const n = phase.targetIds ? phase.targetIds.length : 0;
+    targetBtn.textContent = 'Bersagli (' + n + ')';
+    targetBtn.addEventListener('click', function () {
+      startTargetPicking(index);
+    });
+    targetRow.appendChild(targetBtn);
+
     li.appendChild(desc);
     li.appendChild(row);
+    li.appendChild(targetRow);
     list.appendChild(li);
   });
+}
+
+// ---------- Selezione bersagli di una fase ----------
+
+function startTargetPicking(phaseIndex) {
+  stageEditor.pickingForPhase = phaseIndex;
+  selectObject(null);
+  document.getElementById('sd-picking-num').textContent = phaseIndex + 1;
+  document.getElementById('sd-picking-banner').classList.remove('hidden');
+  document.getElementById('sd-canvas').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  drawStage();
+}
+
+function endTargetPicking() {
+  stageEditor.pickingForPhase = null;
+  document.getElementById('sd-picking-banner').classList.add('hidden');
+  renderPhases();
+  drawStage();
 }
 
 // ============================================================
@@ -523,7 +817,9 @@ function onSaveStage() {
         description: p.description,
         parTime: p.parTime,
         initialParTime: p.initialParTime || p.parTime,
-        toneId: p.toneId
+        toneId: p.toneId,
+        targetIds: p.targetIds || [],
+        streak: p.streak || 0
       };
     })
   };
@@ -552,12 +848,15 @@ function resetStageEditor() {
   stageEditor.objects = [];
   stageEditor.phases = [];
   stageEditor.nextObjectId = 1;
+  stageEditor.view = { scale: 1, ox: 0, oy: 0 };
+  stageEditor.pickingForPhase = null;
   const nameField = document.getElementById('sd-stage-name');
   if (nameField) nameField.value = '';
   if (stageEditor.ctx) {
     selectObject(null);
     renderPhases();
     drawStage();
+    document.getElementById('sd-picking-banner').classList.add('hidden');
   }
 }
 
