@@ -465,3 +465,10 @@ input[type="range"] {
 .btn-primary:disabled {
   opacity: 0.4;
 }
+
+/* ============ PULSANTE ELIMINA OGGETTO ============ */
+.btn-delete-obj {
+  background: var(--no);
+  color: var(--bg);
+  font-weight: 600;
+}
