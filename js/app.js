@@ -54,6 +54,10 @@ function bindNavigation() {
       buildStatsScreen();
       refreshStats();
     }
+    if (dest === 'shottimer') {
+      buildShotTimerScreen();
+      populateShotTimerSetup();
+    }
     goTo(dest);
   });
 }
