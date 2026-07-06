@@ -560,3 +560,121 @@ function resetStageEditor() {
     drawStage();
   }
 }
+
+// ============================================================
+// DRILL CLASSICI PREDEFINITI (stage pronti all'uso)
+// ============================================================
+// Par time iniziali volutamente comodi: la riduzione automatica
+// li fara' scendere con i progressi dell'utente.
+
+const DEFAULT_STAGES = [
+  {
+    id: 'ds_el_presidente',
+    name: 'El Presidente (classico)',
+    objects: [
+      { id: 1, type: 'start', x: 350, y: 430, scale: 1, rotation: 0, shots: 0, appearAt: null },
+      { id: 2, type: 'ipsc', x: 200, y: 120, scale: 1, rotation: 0, shots: 4, appearAt: null },
+      { id: 3, type: 'ipsc', x: 350, y: 100, scale: 1, rotation: 0, shots: 4, appearAt: null },
+      { id: 4, type: 'ipsc', x: 500, y: 120, scale: 1, rotation: 0, shots: 4, appearAt: null }
+    ],
+    phases: [
+      { description: 'Giro + estrazione + 2 colpi per sagoma (1-2-3)', parTime: 5.0, initialParTime: 5.0, toneId: 'B' },
+      { description: 'Ricarica', parTime: 2.5, initialParTime: 2.5, toneId: 'C' },
+      { description: '2 colpi per sagoma (1-2-3)', parTime: 3.5, initialParTime: 3.5, toneId: 'B' }
+    ]
+  },
+  {
+    id: 'ds_bill_drill',
+    name: 'Bill Drill (classico)',
+    objects: [
+      { id: 1, type: 'start', x: 350, y: 430, scale: 1, rotation: 0, shots: 0, appearAt: null },
+      { id: 2, type: 'ipsc', x: 350, y: 130, scale: 1.3, rotation: 0, shots: 6, appearAt: null }
+    ],
+    phases: [
+      { description: 'Estrazione + 6 colpi in zona A', parTime: 4.0, initialParTime: 4.0, toneId: 'B' }
+    ]
+  },
+  {
+    id: 'ds_failure_drill',
+    name: 'Failure Drill (classico)',
+    objects: [
+      { id: 1, type: 'start', x: 350, y: 430, scale: 1, rotation: 0, shots: 0, appearAt: null },
+      { id: 2, type: 'ipsc', x: 350, y: 130, scale: 1.3, rotation: 0, shots: 3, appearAt: null }
+    ],
+    phases: [
+      { description: 'Estrazione + 2 colpi al corpo', parTime: 2.5, initialParTime: 2.5, toneId: 'B' },
+      { description: '1 colpo mirato alla testa', parTime: 1.5, initialParTime: 1.5, toneId: 'C' }
+    ]
+  },
+  {
+    id: 'ds_transizioni_3',
+    name: 'Transizioni su 3 bersagli',
+    objects: [
+      { id: 1, type: 'start', x: 350, y: 430, scale: 1, rotation: 0, shots: 0, appearAt: null },
+      { id: 2, type: 'ipsc', x: 150, y: 140, scale: 0.9, rotation: 0, shots: 2, appearAt: null },
+      { id: 3, type: 'ipsc', x: 350, y: 100, scale: 0.75, rotation: 0, shots: 2, appearAt: null },
+      { id: 4, type: 'ipsc', x: 550, y: 140, scale: 0.9, rotation: 0, shots: 2, appearAt: null }
+    ],
+    phases: [
+      { description: 'Estrazione + 2 colpi sagoma sinistra', parTime: 2.5, initialParTime: 2.5, toneId: 'B' },
+      { description: 'Transizione + 2 colpi sagoma centrale (lontana)', parTime: 2.0, initialParTime: 2.0, toneId: 'C' },
+      { description: 'Transizione + 2 colpi sagoma destra', parTime: 2.0, initialParTime: 2.0, toneId: 'B' }
+    ]
+  },
+  {
+    id: 'ds_popper_plate',
+    name: 'Popper + piattelli',
+    objects: [
+      { id: 1, type: 'start', x: 350, y: 430, scale: 1, rotation: 0, shots: 0, appearAt: null },
+      { id: 2, type: 'popper', x: 200, y: 140, scale: 1, rotation: 0, shots: 1, appearAt: null },
+      { id: 3, type: 'plate', x: 350, y: 110, scale: 1, rotation: 0, shots: 1, appearAt: null },
+      { id: 4, type: 'plate', x: 450, y: 110, scale: 1, rotation: 0, shots: 1, appearAt: null },
+      { id: 5, type: 'popper', x: 550, y: 140, scale: 1, rotation: 0, shots: 1, appearAt: null }
+    ],
+    phases: [
+      { description: 'Estrazione + popper sinistro', parTime: 2.0, initialParTime: 2.0, toneId: 'B' },
+      { description: '2 piattelli centrali', parTime: 2.0, initialParTime: 2.0, toneId: 'C' },
+      { description: 'Popper destro', parTime: 1.2, initialParTime: 1.2, toneId: 'B' }
+    ]
+  },
+  {
+    id: 'ds_noshoot',
+    name: 'Bersagli con no-shoot',
+    objects: [
+      { id: 1, type: 'start', x: 350, y: 430, scale: 1, rotation: 0, shots: 0, appearAt: null },
+      { id: 2, type: 'ipsc', x: 180, y: 130, scale: 1, rotation: 0, shots: 2, appearAt: null },
+      { id: 3, type: 'noshoot', x: 280, y: 140, scale: 1, rotation: 15, shots: 0, appearAt: null },
+      { id: 4, type: 'ipsc', x: 380, y: 130, scale: 1, rotation: 0, shots: 2, appearAt: null },
+      { id: 5, type: 'noshoot', x: 480, y: 140, scale: 1, rotation: -15, shots: 0, appearAt: null },
+      { id: 6, type: 'ipsc', x: 570, y: 130, scale: 1, rotation: 0, shots: 2, appearAt: null }
+    ],
+    phases: [
+      { description: 'Estrazione + 2 colpi prima sagoma', parTime: 2.5, initialParTime: 2.5, toneId: 'B' },
+      { description: '2 colpi seconda sagoma (attenzione al no-shoot)', parTime: 2.0, initialParTime: 2.0, toneId: 'C' },
+      { description: '2 colpi terza sagoma', parTime: 2.0, initialParTime: 2.0, toneId: 'B' }
+    ]
+  }
+];
+
+// Un drill classico e' "attivato" (copiato negli stage dell'utente)
+// alla prima esecuzione, cosi' i suoi par time possono evolvere.
+function activateDefaultStageIfNeeded(stageId) {
+  const isDefault = DEFAULT_STAGES.some(function (s) { return s.id === stageId; });
+  if (!isDefault) return;
+  const alreadySaved = getSavedStages().some(function (s) { return s.id === stageId; });
+  if (alreadySaved) return;
+  const template = DEFAULT_STAGES.find(function (s) { return s.id === stageId; });
+  saveStage(JSON.parse(JSON.stringify(template)));
+}
+
+// Tutti gli stage disponibili: prima i classici non ancora attivati,
+// poi quelli dell'utente (che includono i classici gia' attivati).
+function getAllStages() {
+  const saved = getSavedStages();
+  const savedIds = {};
+  saved.forEach(function (s) { savedIds[s.id] = true; });
+  const inactiveDefaults = DEFAULT_STAGES.filter(function (s) {
+    return !savedIds[s.id];
+  });
+  return inactiveDefaults.concat(saved);
+}
