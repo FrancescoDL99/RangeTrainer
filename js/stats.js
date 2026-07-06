@@ -113,6 +113,10 @@ function renderHistory() {
         const okCount = s.phases.filter(function (p) { return p.success; }).length;
         line2.textContent = formatDate(s.date) +
           ' - ' + okCount + '/' + s.phases.length + ' fasi ok';
+      } else if (s.type === 'shottimer') {
+        line2.textContent = formatDate(s.date) +
+          ' - ' + s.shots.length + ' colpi - first shot ' +
+          s.firstShot.toFixed(2) + ' s - totale ' + s.totalTime.toFixed(2) + ' s';
       } else {
         line2.textContent = formatDate(s.date);
       }
