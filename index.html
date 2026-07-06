@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#111111">
+  <title>RangeTrainer</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ============ SCHERMATA HOME ============ -->
+  <div id="screen-home" class="screen active">
+    <header class="app-header">
+      <h1>RangeTrainer</h1>
+    </header>
+    <main class="home-menu">
+      <button class="btn-menu" data-goto="setup-dryfire">
+        <span class="btn-menu-title">Dry-Fire Trainer</span>
+        <span class="btn-menu-sub">Esercizi con par time</span>
+      </button>
+      <button class="btn-menu btn-disabled" disabled>
+        <span class="btn-menu-title">Shot Timer</span>
+        <span class="btn-menu-sub">In arrivo (Modulo 2)</span>
+      </button>
+      <button class="btn-menu btn-disabled" disabled>
+        <span class="btn-menu-title">Statistiche</span>
+        <span class="btn-menu-sub">In arrivo</span>
+      </button>
+      <button class="btn-menu" data-goto="settings">
+        <span class="btn-menu-title">Impostazioni</span>
+        <span class="btn-menu-sub">Armi ed esercizi</span>
+      </button>
+    </main>
+  </div>
+
+  <!-- ============ SCHERMATA SETUP DRY-FIRE ============ -->
+  <div id="screen-setup-dryfire" class="screen">
+    <header class="app-header">
+      <button class="btn-back" data-goto="home">&#8592;</button>
+      <h2>Setup sessione</h2>
+    </header>
+    <main class="form-page">
+
+      <label class="field">
+        <span class="field-label">Arma</span>
+        <select id="setup-weapon"></select>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Esercizio</span>
+        <select id="setup-exercise"></select>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Par time (secondi)</span>
+        <input type="number" id="setup-partime" step="0.1" min="0.5" value="2.0" inputmode="decimal">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Delay randomico (min-max secondi)</span>
+        <div class="field-row">
+          <input type="number" id="setup-delay-min" step="0.5" min="1" value="2" inputmode="decimal">
+          <input type="number" id="setup-delay-max" step="0.5" min="1" value="4" inputmode="decimal">
+        </div>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Successi consecutivi per ridurre il par time</span>
+        <input type="number" id="setup-threshold" step="1" min="1" value="5" inputmode="numeric">
+      </label>
+
+      <label class="field">
+        <span class="field-label">Riduzione proposta (%)</span>
+        <input type="number" id="setup-reduction" step="1" min="1" max="50" value="5" inputmode="numeric">
+      </label>
+
+      <button id="btn-start-session" class="btn-primary">Inizia sessione</button>
+    </main>
+  </div>
+
+  <!-- ============ SCHERMATA SESSIONE ATTIVA ============ -->
+  <div id="screen-session" class="screen">
+    <main class="session-page">
+      <div id="session-status" class="session-status">Pronto</div>
+      <div id="session-partime" class="session-partime"></div>
+      <div id="session-streak" class="session-streak"></div>
+
+      <div id="session-controls">
+        <button id="btn-run" class="btn-big">VIA</button>
+      </div>
+
+      <div id="session-result" class="session-result hidden">
+        <p>Sei rientrato nel par time?</p>
+        <div class="result-buttons">
+          <button id="btn-success" class="btn-result btn-yes">&#10003;</button>
+          <button id="btn-fail" class="btn-result btn-no">&#10007;</button>
+        </div>
+      </div>
+
+      <button id="btn-end-session" class="btn-secondary">Termina sessione</button>
+    </main>
+  </div>
+
+  <!-- ============ SCHERMATA IMPOSTAZIONI ============ -->
+  <div id="screen-settings" class="screen">
+    <header class="app-header">
+      <button class="btn-back" data-goto="home">&#8592;</button>
+      <h2>Impostazioni</h2>
+    </header>
+    <main class="form-page">
+
+      <section class="settings-section">
+        <h3>Armi</h3>
+        <ul id="weapons-list" class="items-list"></ul>
+        <div class="field-row">
+          <input type="text" id="new-weapon-name" placeholder="Nome arma">
+          <button id="btn-add-weapon" class="btn-small">Aggiungi</button>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>Esercizi personalizzati</h3>
+        <ul id="exercises-list" class="items-list"></ul>
+        <div class="field-row">
+          <input type="text" id="new-exercise-name" placeholder="Nome esercizio">
+          <button id="btn-add-exercise" class="btn-small">Aggiungi</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="js/exercises.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js');
+    }
+  </script>
+</body>
+</html>
