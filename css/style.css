@@ -404,3 +404,64 @@ input[type="range"] {
 .phase-item .field-row select {
   flex: 1;
 }
+
+/* ============ CANVAS SESSIONE DRILL ============ */
+.session-canvas-wrap {
+  width: 100%;
+}
+
+#session-canvas {
+  width: 100%;
+  height: auto;
+  background: #20241f;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* ============ RIEPILOGO DRILL ============ */
+.summary-hint {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.summary-phase {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  padding-left: 34px;
+  background: var(--surface);
+  border-radius: 10px;
+  position: relative;
+}
+
+.summary-phase span {
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.summary-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-mini {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--bg);
+  opacity: 0.35;
+}
+
+.btn-mini.chosen {
+  opacity: 1;
+  outline: 2px solid var(--text);
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+}
