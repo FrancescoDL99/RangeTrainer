@@ -90,7 +90,7 @@ function buildStageDesignerScreen() {
     '  <div id="sd-object-panel" class="sd-object-panel hidden">',
     '    <div class="sd-panel-row">',
     '      <span id="sd-obj-name" class="sd-obj-name"></span>',
-    '      <button id="sd-obj-delete" class="btn-delete">&#10007;</button>',
+    '      <button id="sd-obj-delete" class="btn-small btn-delete-obj">Elimina oggetto</button>',
     '    </div>',
     '    <label class="field">',
     '      <span class="field-label">Dimensione (distanza simulata)</span>',
