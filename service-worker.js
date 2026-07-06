@@ -1,5 +1,5 @@
 // Incrementa questo numero ogni volta che modifichi i file per forzare l'aggiornamento cache
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `rangetrainer-${CACHE_VERSION}`;
 
 // Elenco dei file da salvare in cache per l'uso offline
@@ -47,7 +47,11 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request);
+      return fetch(event.request).catch(() => {
+        // Risorsa non trovata (es. icona mancante): risposta vuota
+        // invece di un errore in console
+        return new Response('', { status: 404, statusText: 'Not found' });
+      });
     })
   );
 });
