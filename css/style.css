@@ -286,3 +286,96 @@ input, select {
   cursor: pointer;
   padding: 2px 8px;
 }
+
+/* ============ STAGE DESIGNER ============ */
+.designer-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.sd-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sd-palette-btn {
+  font-size: 0.8rem;
+  padding: 8px 10px;
+}
+
+#sd-canvas {
+  width: 100%;
+  height: auto;
+  background: #20241f;
+  border: 1px solid #333333;
+  border-radius: 10px;
+  touch-action: none;
+}
+
+.sd-object-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: #1a1a1a;
+  border: 1px solid #ff6a00;
+  border-radius: 10px;
+}
+
+.sd-panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sd-obj-name {
+  font-weight: 600;
+  color: #ff6a00;
+}
+
+input[type="range"] {
+  padding: 0;
+  height: 32px;
+  accent-color: #ff6a00;
+}
+
+/* ============ LISTA FASI ============ */
+.phases-list {
+  list-style: none;
+  counter-reset: fase;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.phase-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  padding-left: 34px;
+  background: #1e1e1e;
+  border-radius: 10px;
+  position: relative;
+}
+
+.phase-item::before {
+  counter-increment: fase;
+  content: counter(fase);
+  position: absolute;
+  left: 10px;
+  top: 14px;
+  color: #ff6a00;
+  font-weight: 700;
+}
+
+.phase-item .field-row input[type="number"] {
+  max-width: 80px;
+}
+
+.phase-item .field-row select {
+  flex: 1;
+}
