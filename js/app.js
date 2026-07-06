@@ -115,7 +115,7 @@ function populateSetupScreen() {
   });
   eSel.appendChild(gSimple);
 
-  const stages = getSavedStages();
+  const stages = getAllStages();
   if (stages.length > 0) {
     const gStage = document.createElement('optgroup');
     gStage.label = 'Stage (drill multi-fase)';
@@ -196,6 +196,7 @@ function onStartSession() {
     startSimpleSession();
   } else {
     session.stageId = parts[1];
+    activateDefaultStageIfNeeded(session.stageId);
     session.stage = JSON.parse(JSON.stringify(
       getSavedStages().find(function (s) { return s.id === session.stageId; })
     ));
