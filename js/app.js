@@ -46,6 +46,14 @@ function bindNavigation() {
       buildStageDesignerScreen();
       resetStageEditor();
     }
+    if (dest === 'history') {
+      buildHistoryScreen();
+      renderHistory();
+    }
+    if (dest === 'stats') {
+      buildStatsScreen();
+      refreshStats();
+    }
     goTo(dest);
   });
 }
