@@ -138,11 +138,26 @@ function populateSetupScreen() {
 function onExerciseSelectionChange() {
   const eSel = document.getElementById('setup-exercise');
   const ptField = document.getElementById('setup-partime').closest('.field');
+  const info = document.getElementById('exercise-info');
+
   if (eSel.value.indexOf('stage|') === 0) {
     ptField.classList.add('hidden');
+    info.classList.add('hidden');
+    return;
+  }
+
+  ptField.classList.remove('hidden');
+  prefillParTime();
+
+  // Scheda illustrativa per gli esercizi predefiniti
+  const exId = eSel.value.split('|')[1];
+  const ex = DEFAULT_EXERCISES.find(function (e) { return e.id === exId; });
+  if (ex && ex.icon) {
+    info.classList.remove('hidden');
+    document.getElementById('exercise-desc').textContent = ex.desc;
+    drawExerciseIcon(document.getElementById('exercise-icon'), ex.icon);
   } else {
-    ptField.classList.remove('hidden');
-    prefillParTime();
+    info.classList.add('hidden');
   }
 }
 
