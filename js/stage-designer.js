@@ -2,6 +2,15 @@
 // stage-designer.js — Editor grafico stage + sequenza fasi
 // ============================================================
 
+// ---------- Lettura del colore principale dal CSS ----------
+// Il canvas non puo' usare direttamente le variabili CSS,
+// quindi leggiamo il valore corrente di --accent quando serve.
+
+function getAccentColor() {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue('--accent').trim() || '#ff6a00';
+}
+
 // ---------- Tipi di oggetto disponibili nella palette ----------
 
 const STAGE_OBJECT_TYPES = [
@@ -286,7 +295,7 @@ function drawStage(visibleFilter) {
     // Bordo di selezione
     if (o.id === stageEditor.selectedId) {
       const r = objectRadius(o);
-      ctx.strokeStyle = '#ff6a00';
+      ctx.strokeStyle = getAccentColor();
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
       ctx.strokeRect(o.x - r, o.y - r, r * 2, r * 2);
@@ -295,7 +304,7 @@ function drawStage(visibleFilter) {
 
     // Numero colpi richiesti
     if (o.shots > 0) {
-      ctx.fillStyle = '#ff6a00';
+      ctx.fillStyle = getAccentColor();
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(o.shots + ' c.', o.x, o.y + objectRadius(o) + 16);
