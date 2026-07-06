@@ -321,6 +321,8 @@ function startStageSession() {
 // Disegna lo stage sul canvas della sessione.
 // elapsedSeconds = null: solo oggetti senza evento temporizzato.
 // Altrimenti mostra anche gli oggetti il cui appearAt e' passato.
+let sessionHighlightIds = null;
+
 function drawSessionStage(elapsedSeconds) {
   const canvas = document.getElementById('session-canvas');
   const savedCanvas = stageEditor.canvas;
@@ -333,11 +335,11 @@ function drawSessionStage(elapsedSeconds) {
   stageEditor.objects = session.stage.objects;
   stageEditor.selectedId = null;
 
-  drawStage(function (o) {
-    if (o.appearAt === null) return true;
+drawStage(function (o) {
+    if (o.appearAt === null || o.appearAt === undefined) return true;
     if (elapsedSeconds === null) return false;
     return elapsedSeconds >= o.appearAt;
-  });
+  }, sessionHighlightIds);
 
   stageEditor.canvas = savedCanvas;
   stageEditor.ctx = savedCtx;
@@ -362,6 +364,7 @@ function runStageDrill() {
       },
       onStart: function () {
         document.getElementById('session-status').textContent = 'VIA!';
+        sessionHighlightIds = session.stage.phases[0].targetIds || null;
         startStageAnimation();
       },
       onPhaseBeep: function (index) {
@@ -369,6 +372,9 @@ function runStageDrill() {
         if (index < total - 1) {
           document.getElementById('session-status').textContent =
             'Fase ' + (index + 2) + ' di ' + total;
+          sessionHighlightIds = session.stage.phases[index + 1].targetIds || null;
+        } else {
+          sessionHighlightIds = null;
         }
       },
       onFinished: function () {
