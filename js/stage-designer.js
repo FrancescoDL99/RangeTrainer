@@ -115,6 +115,10 @@ function buildStageDesignerScreen() {
     '      <span class="field-label">Lunghezza muro</span>',
     '      <input type="range" id="sd-obj-length" min="60" max="400" value="160">',
     '    </label>',
+    '    <label class="field hidden" id="sd-height-field">',
+    '      <span class="field-label">Altezza muro</span>',
+    '      <input type="range" id="sd-obj-height" min="10" max="120" value="16">',
+    '    </label>',
     '    <label class="field" id="sd-shots-field">',
     '      <span class="field-label">Colpi richiesti</span>',
     '      <input type="number" id="sd-obj-shots" min="1" max="20" value="2" inputmode="numeric">',
@@ -174,6 +178,10 @@ function initStageDesigner() {
     const obj = getSelectedObject();
     if (obj) { obj.length = parseInt(e.target.value, 10); drawStage(); }
   });
+  document.getElementById('sd-obj-height').addEventListener('input', function (e) {
+    const obj = getSelectedObject();
+    if (obj) { obj.height = parseInt(e.target.value, 10); drawStage(); }
+  });
   document.getElementById('sd-obj-shots').addEventListener('input', function (e) {
     const obj = getSelectedObject();
     if (obj) { obj.shots = parseInt(e.target.value, 10) || 1; drawStage(); }
@@ -222,6 +230,7 @@ function addStageObject(type) {
     scale: 1,
     rotation: 0,
     length: type === 'wall' ? 160 : 0,
+    height: type === 'wall' ? 16 : 0,
     shots: typeDef.canShoot ? 2 : 0,
     appearAt: null
   };
@@ -258,7 +267,9 @@ function selectObject(id) {
   document.getElementById('sd-obj-name').textContent = typeDef.name + ' #' + obj.id;
   document.getElementById('sd-obj-scale').value = Math.round(obj.scale * 100);
   document.getElementById('sd-obj-rotation').value = obj.rotation || 0;
-  document.getElementById('sd-obj-length').value = obj.length || 160;
+  document.getElementById('sd-length-field').classList.toggle('hidden', obj.type !== 'wall');
+  document.getElementById('sd-height-field').classList.toggle('hidden', obj.type !== 'wall');
+  document.getElementById('sd-obj-height').value = obj.height || 16;
   document.getElementById('sd-obj-shots').value = obj.shots;
   document.getElementById('sd-shots-field').style.display = typeDef.canShoot ? '' : 'none';
   document.getElementById('sd-length-field').classList.toggle('hidden', obj.type !== 'wall');
@@ -653,17 +664,19 @@ function drawObjectShape(ctx, o) {
       break;
     }
 
-    case 'wall': {
-      // Il muro NON viene scalato dalla dimensione: usa la lunghezza propria
+     case 'wall': {
+      // Il muro usa dimensioni proprie (lunghezza e altezza),
+      // indipendenti dallo slider Dimensione
       const half = (o.length || 160) / 2 / o.scale;
-      const wg = ctx.createLinearGradient(0, -8, 0, 8);
+      const halfH = (o.height || 16) / 2 / o.scale;
+      const wg = ctx.createLinearGradient(0, -halfH, 0, halfH);
       wg.addColorStop(0, '#7a7268');
       wg.addColorStop(1, '#57504a');
       ctx.fillStyle = wg;
-      ctx.fillRect(-half, -8 / o.scale, half * 2, 16 / o.scale);
+      ctx.fillRect(-half, -halfH, half * 2, halfH * 2);
       ctx.strokeStyle = '#3a352f';
       ctx.lineWidth = 2 / o.scale;
-      ctx.strokeRect(-half, -8 / o.scale, half * 2, 16 / o.scale);
+      ctx.strokeRect(-half, -halfH, half * 2, halfH * 2);
       break;
     }
 
