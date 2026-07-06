@@ -36,15 +36,17 @@ function goTo(screenId) {
 }
 
 function bindNavigation() {
-  document.querySelectorAll('[data-goto]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      const dest = btn.getAttribute('data-goto');
-      if (dest === 'stage-designer') {
-        buildStageDesignerScreen();
-        resetStageEditor();
-      }
-      goTo(dest);
-    });
+  // Ascolto sul documento intero: funziona anche per pulsanti
+  // creati dopo l'avvio (es. la freccia dello Stage Designer)
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-goto]');
+    if (!btn) return;
+    const dest = btn.getAttribute('data-goto');
+    if (dest === 'stage-designer') {
+      buildStageDesignerScreen();
+      resetStageEditor();
+    }
+    goTo(dest);
   });
 }
 
