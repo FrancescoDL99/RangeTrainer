@@ -14,6 +14,7 @@ const shotTimer = {
   shots: [],             // tempi dei colpi (secondi dal beep)
   lastShotMs: 0,         // per il tempo di mascheramento
   maskMs: 150,           // ignora picchi entro 150ms dal colpo precedente
+  muteUntilMs: 0,        // finestra di silenzio durante i beep dell'app stessa
   weaponId: null,
   drillName: '',
   parTime: null,
@@ -77,8 +78,8 @@ function calibrate(onProgress, onDone) {
         shotTimer.noiseFloor = maxLevel;
         // Soglia: a meta' strada tra il rumore di fondo e il massimo,
         // mai sotto 0.25
-        shotTimer.threshold = Math.min(0.95,
-          Math.max(0.25, maxLevel + (1 - maxLevel) * 0.5));
+        shotTimer.threshold = Math.min(0.99,
+          Math.max(0.05, maxLevel + (1 - maxLevel) * 0.5));
         if (onDone) onDone(shotTimer.threshold);
       }
     }, 100);
@@ -98,7 +99,8 @@ function startShotDetection() {
       const level = currentLevel();
       const nowMs = performance.now();
       if (level >= shotTimer.threshold &&
-          nowMs - shotTimer.lastShotMs > shotTimer.maskMs) {
+          nowMs - shotTimer.lastShotMs > shotTimer.maskMs &&
+          nowMs >= shotTimer.muteUntilMs) {
         shotTimer.lastShotMs = nowMs;
         const t = (nowMs - shotTimer.startTimeMs) / 1000;
         if (t > 0) {
@@ -153,7 +155,7 @@ function buildShotTimerScreen() {
     '    <div id="st-cal-status" class="st-cal-status"></div>',
     '    <label class="field">',
     '      <span class="field-label">Sensibilita&#768; (soglia: <span id="st-threshold-val">0.50</span>)</span>',
-    '      <input type="range" id="st-threshold" min="10" max="95" value="50">',
+    '      <input type="range" id="st-threshold" min="1" max="99" value="50">',
     '    </label>',
     '    <div class="st-level-bar"><div id="st-level-fill" class="st-level-fill"></div><div id="st-level-marker" class="st-level-marker"></div></div>',
     '  </section>',
@@ -312,12 +314,19 @@ function startShotTimerSession() {
       onWaiting: function () {
         document.getElementById('st-status').textContent = 'Attendi il beep...';
       },
-      onStart: function () {
+     onStart: function () {
         document.getElementById('st-status').textContent = 'VIA!';
         shotTimer.startTimeMs = performance.now();
         shotTimer.lastShotMs = 0;
+        // Silenzia il microfono per la durata del beep + un margine,
+        // cosi' l'app non scambia il proprio bip per uno sparo
+        shotTimer.muteUntilMs = performance.now() + 350;
         shotTimer.running = true;
         startDisplayTimer();
+      },
+      onPhaseBeep: function () {
+        // Beep di par time (se impostato): stessa protezione
+        shotTimer.muteUntilMs = performance.now() + 350;
       }
     }
   );
