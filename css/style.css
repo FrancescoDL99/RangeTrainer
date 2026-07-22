@@ -643,3 +643,34 @@ input[type="range"] {
   border-radius: 10px;
   font-size: 0.9rem;
 }
+
+/* ============ LOCK SCREEN ============ */
+.rt-lock-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.rt-lock-box {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+}
+
+.rt-lock-box h1 {
+  color: var(--accent);
+  font-size: 1.6rem;
+}
+
+.rt-lock-error {
+  color: var(--no);
+  font-size: 0.9rem;
+}
