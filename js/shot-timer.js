@@ -155,7 +155,7 @@ function buildShotTimerScreen() {
     '    <div id="st-cal-status" class="st-cal-status"></div>',
     '    <label class="field">',
     '      <span class="field-label">Sensibilita&#768; (soglia: <span id="st-threshold-val">0.50</span>)</span>',
-    '      <input type="range" id="st-threshold" min="1" max="99" value="50">',
+    '      <input type="range" id="st-threshold" min="2" max="99" value="50">',
     '    </label>',
     '    <div class="st-level-bar"><div id="st-level-fill" class="st-level-fill"></div><div id="st-level-marker" class="st-level-marker"></div></div>',
     '  </section>',
