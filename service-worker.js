@@ -1,5 +1,5 @@
 // Incrementa questo numero ogni volta che modifichi i file per forzare l'aggiornamento cache
-const CACHE_VERSION = 'v14';
+const CACHE_VERSION = 'v15';
 const CACHE_NAME = `rangetrainer-${CACHE_VERSION}`;
 
 // Elenco dei file da salvare in cache per l'uso offline
