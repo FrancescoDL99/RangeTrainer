@@ -10,6 +10,17 @@
 </head>
 <body>
 
+  <!-- ============ LOCK SCREEN (deterrente password) ============ -->
+  <div id="rt-lock-screen" class="rt-lock-screen">
+    <div class="rt-lock-box">
+      <h1>RangeTrainer</h1>
+      <p>Inserisci la password per accedere</p>
+      <input type="password" id="rt-lock-input" autocomplete="off" placeholder="Password">
+      <button id="rt-lock-submit" class="btn-primary">Entra</button>
+      <p id="rt-lock-error" class="rt-lock-error hidden">Password errata.</p>
+    </div>
+  </div>
+
   <!-- ============ SCHERMATA HOME ============ -->
   <div id="screen-home" class="screen active">
     <header class="app-header">
